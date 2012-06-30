@@ -1,41 +1,35 @@
 package Inline::C::ParsePegex;
 use strict;
-use Carp;
+
 use Pegex::Grammar;
 use Pegex::Compiler;
 
-use XXX;
-use IO::All;
-use YAML::XS;
-
 sub register {
     {
-     extends => [qw(C)],
-     overrides => [qw(get_parser)],
+        extends => [qw(C)],
+        overrides => [qw(get_parser)],
     }
 }
 
 sub get_parser {
-    Inline::C::_parser_test("Inline::C::ParsePegex::get_parser called\n") if $_[0]->{CONFIG}{_TESTING};
+    Inline::C::_parser_test("Inline::C::ParsePegex::get_parser called\n")
+        if $_[0]->{CONFIG}{_TESTING};
     bless {}, 'Inline::C::ParsePegex'
 }
 
 sub code {
     my($self,$code) = @_;
 
-    $self->{data} = Load io('expect')->all;
-
-    #XXX pegex($self->grammar)->parse($code);
-
     my $pegex_grammar = Pegex::Grammar->new(
         tree => Pegex::Compiler->compile($self->grammar)->tree,
         receiver => 'Inline::C::ParsePegex::AST',
     );
+
 #    $Pegex::Parser::Debug = 1;
+    $main::data =
+    $self->{data} = $pegex_grammar->parse($code);
 
-    $main::data = $pegex_grammar->parse($code);
-
-   return 1;  # We never fail.
+    return 1;
 }
 
 sub grammar {
@@ -87,7 +81,6 @@ anything_else: /<ANY>*<EOL>/
 
 package Inline::C::ParsePegex::AST;
 
-use XXX;
 use parent 'Pegex::Receiver';
 
 sub initialize {
@@ -139,7 +132,7 @@ __DATA__
 
 =head1 NAME
 
-Inline::C::ParsePegex - The New and Improved Inline::C Parser
+Inline::C::ParsePegex - Yet Another Inline::C Parser
 
 =head1 SYNOPSIS
 
@@ -148,12 +141,11 @@ Inline::C::ParsePegex - The New and Improved Inline::C Parser
 
 =head1 DESCRIPTION
 
-This module is a much faster version of Inline::C's Parse::RecDescent
-parser. It is based on regular expressions instead.
+This is another version of Inline::C's parser. It is based on Pegex.
 
 =head2 AUTHOR
 
-Mitchell N Charity <mcharity@vendian.org>
+Ingy döt Net <ingy@ingy.net>
 
 =head1 COPYRIGHT
 
