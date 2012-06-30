@@ -2,6 +2,8 @@ package Inline::C::ParseRegExp;
 use strict;
 use Carp;
 
+die "Don't want to test ParseRegExp";
+
 sub register {
     {
      extends => [qw(C)],
