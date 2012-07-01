@@ -35,22 +35,24 @@ sub code {
 sub grammar {
     <<'...';
 
-code:   <part>+
+code: <part>+
 
-part:   <comment>
-      | <function_definition>
-      | <function_declaration>
-      | <anything_else>
+part: <comment> |
+      <function_definition> |
+      <function_declaration> |
+      <anything_else>
 
 comment:
-        /~<SLASH><SLASH>[^<BREAK>]*<BREAK>/
-  | /~<SLASH><STAR>(?:[^<STAR>]+|<STAR>(?!<SLASH>))*<STAR><SLASH>([<TAB>]*)?/
+    /~<SLASH><SLASH>[^<BREAK>]*<BREAK>/ |
+    /~<SLASH><STAR>(?:[^<STAR>]+|<STAR>(?!<SLASH>))*<STAR><SLASH>([<TAB>]*)?/
 
 function_definition:
-        <rtype> /(<identifier>)/ <LPAREN> <arg>* % <COMMA> /~<RPAREN>~<LCURLY>~/
+    <rtype> /(<identifier>)/
+    <LPAREN> <arg>* % <COMMA> /~<RPAREN>~<LCURLY>~/
 
 function_declaration:
-        <rtype> /(<identifier>)/ <LPAREN> [ <arg_decl>* % <COMMA> ] /~<RPAREN>~<SEMI>~/
+    <rtype> /(<identifier>)/
+    <LPAREN> <arg_decl>* % <COMMA> /~<RPAREN>~<SEMI>~/
 
 rtype: /<WS>*(?:<rtype1>|<rtype2>)<WS>*/
 
@@ -86,35 +88,28 @@ use parent 'Pegex::Receiver';
 sub initialize {
     my ($self) = @_;
     my $data = {
-        AUTOWRAP => 0,
-        done => {},
-        function => {},
         functions => [],
+        function => {},
+        done => {},
     };
     $self->data($data);
-}
-
-sub got_code {
-    my ($self) = @_;
-    $self->data;
 }
 
 sub got_function_definition {
     my ($self, $ast) = @_;
     my ($rtype, $name, $args) = @$ast;
-    my ($tname, $stars) = @$rtype;
+    my ($rname, $rstars) = @$rtype;
     my $data = $self->data;
     my $def = $data->{function}{$name} = {};
+    push @{$data->{functions}}, $name;
+    $def->{return_type} = $rname . ($rstars ? " $rstars" : '');
     $def->{arg_names} = [];
     $def->{arg_types} = [];
-    $def->{return_type} = $tname . ($stars ? " $stars" : '');
     for my $arg (@$args) {
         my ($type, $stars, $name) = @$arg;
         push @{$def->{arg_names}}, $name;
         push @{$def->{arg_types}}, $type . ($stars ? " $stars" : '');
-
     }
-    push @{$data->{functions}}, $name;
     $data->{done}{$name} = 1;
     return;
 }
