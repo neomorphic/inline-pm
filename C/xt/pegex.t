@@ -26,3 +26,4 @@ else {
     system('diff -u xt/expect got');
     system('rm got');
 }
+
