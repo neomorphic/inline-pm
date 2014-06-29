@@ -3,6 +3,7 @@ use strict;
 
 use Pegex::Grammar;
 use Pegex::Compiler;
+use Pegex::Parser;
 
 sub register {
     {
@@ -21,13 +22,15 @@ sub code {
     my($self,$code) = @_;
 
     my $pegex_grammar = Pegex::Grammar->new(
-        tree => Pegex::Compiler->compile($self->grammar)->tree,
-        receiver => 'Inline::C::ParsePegex::AST',
+        tree => Pegex::Compiler->new->compile($self->grammar)->tree,
     );
 
-#    $Pegex::Parser::Debug = 1;
-    $main::data =
-    $self->{data} = $pegex_grammar->parse($code);
+    $main::data = $self->{data} =
+    Pegex::Parser->new(
+        grammar => $pegex_grammar,
+        receiver => Inline::C::ParsePegex::AST->new,
+        debug => 1,
+    )->parse($code);
 
     return 1;
 }
@@ -35,48 +38,49 @@ sub code {
 sub grammar {
     <<'...';
 
-code: <part>+
+code: part+
 
-part: <comment> |
-      <function_definition> |
-      <function_declaration> |
-      <anything_else>
+part:
+| comment
+  | function_definition
+  | function_declaration
+  | anything_else
 
 comment:
-    /~<SLASH><SLASH>[^<BREAK>]*<BREAK>/ |
-    /~<SLASH><STAR>(?:[^<STAR>]+|<STAR>(?!<SLASH>))*<STAR><SLASH>([<TAB>]*)?/
+    /- SLASH SLASH [^ BREAK ]* BREAK / |
+    /- SLASH STAR (: [^ STAR ]+ | STAR (! SLASH))* STAR SLASH ([ TAB ]*)? /
 
 function_definition:
-    <rtype> /(<identifier>)/
-    <LPAREN> <arg>* % <COMMA> /~<RPAREN>~<LCURLY>~/
+    rtype /( identifier )/
+    LPAREN arg* % COMMA /- RPAREN - LCURLY -/
 
 function_declaration:
-    <rtype> /(<identifier>)/
-    <LPAREN> <arg_decl>* % <COMMA> /~<RPAREN>~<SEMI>~/
+    rtype /( identifier )/
+    LPAREN arg_decl* % COMMA /- RPAREN - SEMI -/
 
-rtype: /<WS>*(?:<rtype1>|<rtype2>)<WS>*/
+rtype: / WS*(: rtype1 | rtype2 ) WS* /
 
-rtype1: /<modifier>*(<type_identifier>)<WS>*(<STAR>*)/
+rtype1: / modifier*( type_identifier ) WS*( STAR*) /
 
-rtype2: /<modifier>+<STAR>*/
+rtype2: / modifier+ STAR*/
 
-arg: /(?:<type><WS>*(<identifier>)|(<DOT><DOT><DOT>))/
+arg: /(: type WS*( identifier)|( DOT DOT DOT ))/
 
-arg_decl: /(<type><WS>*<identifier>*|<DOT><DOT><DOT>)/
+arg_decl: /( type WS* identifier*| DOT DOT DOT )/
 
-type: /<WS>*(?:<type1>|<type2>)<WS>*/
+type: / WS*(: type1 | type2 ) WS* /
 
-type1: /<modifier>*(<type_identifier>)<WS>*(<STAR>*)/
+type1: / modifier*( type_identifier ) WS*( STAR* )/
 
-type2: /<modifier>*<STAR>*/
+type2: / modifier* STAR* /
 
-modifier: /(?:(?:unsigned|long|extern|const)\b<WS>*)/
+modifier: /(: (:unsigned|long|extern|const)\b WS* )/
 
-identifier: /(?:<WORD>+)/
+identifier: /(: WORD+ )/
 
-type_identifier: /(?:<WORD>+)/
+type_identifier: /(: WORD+ )/
 
-anything_else: /<ANY>*<EOL>/
+anything_else: / ANY* EOL /
 
 ...
 }
